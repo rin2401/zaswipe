@@ -1,27 +1,30 @@
-import time
+import time, os, datetime
 import cv2
 import mss
 import numpy as np
 import tensorflow as tf
 from tensorflow import keras
 labels = ['cheo', 'diacau', 'muiten', 'sach', 'tamgiac', 'tinnhan', 'trong']
-model = keras.models.load_model("model_v9.h5")
+model = keras.models.load_model("model_v10.h5")
 
 
 from pynput.mouse import Button, Controller
 from pynput import keyboard
 
 exit = False
+auto = False
+num_swipe = 0
+
 mouse = Controller()
 
 def swipe(arrow):
+    global num_swipe
     if arrow not in ["trai", "phai", "xuong"]:
         return
     h = 1080
     w = 1920//2
 
     # Read pointer position
-
     mouse.position = (w//2, h//2+60)
 
     mouse.press(Button.left)
@@ -33,13 +36,16 @@ def swipe(arrow):
     if arrow == "xuong":
         mouse.move(0, 200)    
     mouse.release(Button.left)
-    print(arrow)
+    num_swipe +=1
+    print(num_swipe, arrow)
         
 def on_press(key):
-
-    if key==keyboard.KeyCode(char="z"):
+    global exit, auto
+    if key==keyboard.KeyCode(char="q"):
         exit = True
         exit()
+    if key==keyboard.KeyCode(char="a"):
+        auto = not auto
     if key == keyboard.Key.down:
         swipe("xuong")
     if key == keyboard.Key.left:
@@ -48,11 +54,7 @@ def on_press(key):
         swipe("phai")
 
 
-
-
-def crop_img(image):
-    W = 400
-    H = 820
+def crop_img(image, W=400, H=820):
     # image = cv2.resize(image, (W, H))
     img = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
     images = []
@@ -137,17 +139,15 @@ def screen_record():
     st = 179
 
 
-    ### st = 170
+    ## st = 170
 
     # photos
-    st = 135
+    st = 134
 
     #video ip11
     # sw = 481
     # sh = 897
     # st = 105
-
-    auto=False
 
     mon = {"top": st, "left": (w-sw)//2, "width": sw, "height": sh, "mon": 1}
 
@@ -159,12 +159,18 @@ def screen_record():
 
     start_time=time.time()
     frame = 0
-    while True:
-        img = np.asarray(sct.grab(mon))
-        images, img = crop_img(img)
+    time_start = datetime.datetime.now().strftime('%Y%m%d_%H%M%S')
+    save_image_path = f"image_{time_start}/"
+
+    while not exit:
+        img_raw = np.asarray(sct.grab(mon))
+        if auto:
+            os.makedirs(save_image_path, exist_ok=True)
+            # cv2.imwrite(os.path.join(save_image_path, f"{frame}.jpg"), img_raw)
+        images, img = crop_img(img_raw, sw, sh)
         preds = predict(images)
         arow = predict_arrow(preds)
-        print(preds, arow)
+        # print(preds, arow)
         if arow==old_arow:
             i += 1
         else:
@@ -174,17 +180,21 @@ def screen_record():
             img = draw(img, arow)
             if auto:
                 swipe(arow)
-            time.sleep(0.2)
+                time.sleep(0.15)
 
         cv2.imshow(title, img)
         if cv2.waitKey(25) & 0xFF == ord("q"):
             cv2.destroyAllWindows()
             break
+
         frame +=1
         fps = frame//(time.time()-start_time)
         # print(fps)
 
 print("Swipe by arrow")
+print("  >>> Press a to on/off auto")
+print("  >>> Press q to quit")
+
 with keyboard.Listener(on_press=on_press) as listener:
     screen_record()
     listener.join()
