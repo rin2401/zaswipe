@@ -11,6 +11,8 @@ model = keras.models.load_model("model_v10.h5")
 from pynput.mouse import Button, Controller
 from pynput import keyboard
 
+
+log = False
 exit = False
 auto = False
 num_swipe = 0
@@ -40,12 +42,16 @@ def swipe(arrow):
     print(num_swipe, arrow)
         
 def on_press(key):
-    global exit, auto
+    global exit, auto, log
     if key==keyboard.KeyCode(char="q"):
         exit = True
         exit()
     if key==keyboard.KeyCode(char="a"):
         auto = not auto
+        print(">>>>> Auto mode: ", auto)
+    if key==keyboard.KeyCode(char="l"):
+        log = not log
+        print(">>>>> Log mode: ", log)
     if key == keyboard.Key.down:
         swipe("xuong")
     if key == keyboard.Key.left:
@@ -164,9 +170,9 @@ def screen_record():
 
     while not exit:
         img_raw = np.asarray(sct.grab(mon))
-        if auto:
+        if log:
             os.makedirs(save_image_path, exist_ok=True)
-            # cv2.imwrite(os.path.join(save_image_path, f"{frame}.jpg"), img_raw)
+            cv2.imwrite(os.path.join(save_image_path, f"{frame}.jpg"), img_raw)
         images, img = crop_img(img_raw, sw, sh)
         preds = predict(images)
         arow = predict_arrow(preds)
@@ -180,7 +186,7 @@ def screen_record():
             img = draw(img, arow)
             if auto:
                 swipe(arow)
-                time.sleep(0.15)
+                time.sleep(0.2)
 
         cv2.imshow(title, img)
         if cv2.waitKey(25) & 0xFF == ord("q"):
@@ -191,9 +197,11 @@ def screen_record():
         fps = frame//(time.time()-start_time)
         # print(fps)
 
-print("Swipe by arrow")
-print("  >>> Press a to on/off auto")
-print("  >>> Press q to quit")
+print("=======ZASwipe=========")
+print("  >>> Press arrow to swipe.")
+print("  >>> Press a to on/off auto.")
+print("  >>> Press l to log image.")
+print("  >>> Press q to quit.")
 
 with keyboard.Listener(on_press=on_press) as listener:
     screen_record()
