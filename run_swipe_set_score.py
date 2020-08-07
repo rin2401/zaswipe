@@ -10,16 +10,55 @@ model = keras.models.load_model("model_v10.h5")
 
 from pynput.mouse import Button, Controller
 from pynput import keyboard
-
+mouse = Controller()
 
 log = False
 exit = False
 auto = False
 num_swipe = 0
-MAX_SCORE = 19000
+MAX_SCORE = 22320  # 22980
+START_AUTO_TIME = 0
+
+def count_score(frame):
+    score = 0
+    r = 20
+    for i in range(1, frame + 1):
+        score += r
+        if i % 5==0:
+            r += 20
+
+    return score
 
 
-mouse = Controller()
+def get_swipe_map(score):
+    target_score = score
+    score_map = {i: count_score(i) for i in range(1, 200)}
+    num_swipe = 0
+    swipe_check = []
+    for i, s in sorted(score_map.items(), reverse=True):
+        if s <= score:
+            n = score//s
+            for _ in range(n):
+                print(i, True)
+                swipe_check += [True] * i
+                score -= s
+                num_swipe += i
+                if not score: break
+                print(1, False)
+                swipe_check += [False]
+                # score -= 20
+                num_swipe += 1
+                if not score: break
+    
+    delay_time = 50/num_swipe-0.1
+    # print(target_score, num_swipe, delay_time)
+    swipe_check = {i+1:c for i, c in enumerate(swipe_check[::-1])}
+    return swipe_check, num_swipe, delay_time
+
+
+SWIPE_MAP, NUM_AUTO_SWIPE, DELAY_TIME = get_swipe_map(MAX_SCORE)
+
+
 
 def swipe(arrow):
     global num_swipe, auto
@@ -28,9 +67,20 @@ def swipe(arrow):
     h = 1080
     w = 1920//2
 
+    num_swipe += 1
+
+    check = True
+    if num_swipe in SWIPE_MAP:
+        check = SWIPE_MAP[num_swipe]
+
+    if not check:
+        if arrow=="trai":
+            arrow="phai"
+        else:
+            arrow="trai"
+
     # Read pointer position
     mouse.position = (w//2, h//2+60)
-
     mouse.press(Button.left)
     # Move pointer relative to current position
     if arrow == "trai":
@@ -40,21 +90,26 @@ def swipe(arrow):
     if arrow == "xuong":
         mouse.move(0, 200)    
     mouse.release(Button.left)
-    num_swipe +=1
-    score = count_score(num_swipe)
 
-    print(num_swipe, arrow, score)
-    if score > MAX_SCORE:
+    print(num_swipe, arrow, time.time()-START_AUTO_TIME)
+
+    if num_swipe >= NUM_AUTO_SWIPE:
         auto = False
+
+    # score = count_score(num_swipe)
+    # print(num_swipe, arrow, score)
+    # if score > MAX_SCORE:
+    #     auto = False
 
         
 def on_press(key):
-    global exit, auto, log
+    global exit, auto, log, START_AUTO_TIME
     if key==keyboard.KeyCode(char="q"):
         exit = True
         exit()
     if key==keyboard.KeyCode(char="a"):
         auto = not auto
+        if auto: START_AUTO_TIME = time.time()
         print(">>>>> Auto mode: ", auto)
     if key==keyboard.KeyCode(char="l"):
         log = not log
@@ -143,17 +198,6 @@ def draw(img, arow):
 #     return img
 
 
-def count_score(frame):
-    score = 0
-    r = 20
-    for i in range(1, frame + 1):
-        score += r
-        if i % 5==0:
-            r += 20
-
-    return score
-
-
 def screen_record():
     global auto
 
@@ -207,7 +251,7 @@ def screen_record():
             img = draw(img, arow)
             if auto:
                 swipe(arow)
-                sleep_time = np.random.uniform(0.35, 0.45)
+                sleep_time = np.random.uniform(DELAY_TIME - 0.02, DELAY_TIME + 0.02)
                 time.sleep(sleep_time)
 
         cv2.imshow(title, img)
@@ -224,6 +268,7 @@ print("  >>> Press arrow to swipe.")
 print("  >>> Press a to on/off auto.")
 print("  >>> Press l to log image.")
 print("  >>> Press q to quit.")
+print(f"***Target***: score={MAX_SCORE} num={NUM_AUTO_SWIPE} delay={DELAY_TIME}")
 
 with keyboard.Listener(on_press=on_press) as listener:
     screen_record()
