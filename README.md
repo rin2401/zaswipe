@@ -7,3 +7,6 @@
 - [x] Swipe by keyboard arrow using pynput
 - [x] Auto swipe
 - [x] Auto swipe by score
+
+# Test
+- Open test_model.ipynb to view
