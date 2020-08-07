@@ -16,7 +16,7 @@ log = False
 exit = False
 auto = False
 num_swipe = 0
-MAX_SCORE = 22320  # 22980
+MAX_SCORE = 22860 # 22980
 START_AUTO_TIME = 0
 
 def count_score(frame):
