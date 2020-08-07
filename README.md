@@ -6,4 +6,4 @@
 - [x] Predict left, right, bottom
 - [x] Swipe by keyboard arrow using pynput
 - [x] Auto swipe
-= [x] Auto swipe by score
+- [x] Auto swipe by score
